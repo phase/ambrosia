@@ -6,7 +6,7 @@ use tracing_subscriber::EnvFilter;
 
 fn main() -> Result<(), Report> {
     setup()?;
-    info!("{}", bridge::ffi::test());
+    bridge::ffi::run(vec!["--version".to_string()]);
     Ok(())
 }
 

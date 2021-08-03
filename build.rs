@@ -8,20 +8,28 @@ const ENV_LLVM_PREFIX: &'static str = "LLVM_PREFIX";
 fn main() {
     let llvm_prefix = detect_llvm_prefix();
     let llvm_include_dir = llvm_prefix.join("include");
+    let llvm_libs_dir = llvm_prefix.join("lib");
 
     mlir_tablegen("cxx/include/ops.td", "-gen-op-decls", &llvm_include_dir, "cxx/include/gen/ops.h.inc");
     mlir_tablegen("cxx/include/ops.td", "-gen-op-defs", &llvm_include_dir, "cxx/include/gen/ops.cpp.inc");
     mlir_tablegen("cxx/include/ops.td", "-gen-dialect-decls", &llvm_include_dir, "cxx/include/gen/dialect.h.inc");
     // FUTURE: mlir_tablegen("cxx/include/ops.td", "-gen-dialect-defs", &llvm_include_dir, "cxx/include/gen/dialect.cpp.inc");
 
+    // link LLVM deps
+    println!("cargo:rustc-link-search=all={}", llvm_libs_dir.to_str().expect("failed to get llvm lib dir"));
+    println!("cargo:rustc-link-lib=dylib=MLIR");
+    println!("cargo:rustc-link-lib=dylib=LLVM");
+
     cxx_build::bridge("src/bridge.rs")
         .file("cxx/bridge.cpp")
-        .flag_if_supported("-std=c++14")
+        .file("cxx/dialect.cpp")
+        .flag_if_supported("-std=c++14") // same as LLVM
+        .flag("-w") // TEMP: disable warnings
         .include(llvm_include_dir)
         .compile("cxx-ambrosia");
 }
 
-pub fn output(cmd: &mut Command) -> String {
+pub fn get_output(cmd: &mut Command) -> String {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
         Err(e) => {
@@ -30,8 +38,7 @@ pub fn output(cmd: &mut Command) -> String {
     };
     if !output.status.success() {
         panic!(
-            "command did not execute successfully: {:?}\n\
-             expected success, got: {}",
+            "command did not execute successfully: {:?}\nexpected success, got: {}",
             cmd, output.status
         );
     }
@@ -46,7 +53,7 @@ fn detect_llvm_prefix() -> PathBuf {
     if let Ok(llvm_config) = which::which("llvm-config") {
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--prefix");
-        return PathBuf::from(output(&mut cmd));
+        return PathBuf::from(get_output(&mut cmd));
     }
 
     let mut llvm_prefix = env::var("XDG_DATA_HOME")
@@ -63,10 +70,6 @@ fn detect_llvm_prefix() -> PathBuf {
         if llvm_bin.exists() {
             return llvm_prefix;
         }
-        let lumen = llvm_prefix.as_path().join("lumen");
-        if lumen.exists() {
-            return lumen.to_path_buf();
-        }
     }
 
     panic!("LLVM_PREFIX is not defined and unable to locate LLVM to build with")
@@ -82,9 +85,9 @@ fn mlir_tablegen(file_name: &str, flag: &str, llvm_include_dir: &PathBuf, destin
         cmd.arg(format!("-I{}", llvm_include_dir.to_str().expect("no llvm include dir")));
         let destination_path = PathBuf::from(destination);
         if let Some(parent) = destination_path.parent() {
-            fs::create_dir_all(parent);
+            let _ = fs::create_dir_all(parent);
         }
-        fs::write(destination_path, output(&mut cmd)).expect("failed to write tblgen content");
+        fs::write(destination_path, get_output(&mut cmd)).expect("failed to write tblgen content");
     } else {
         panic!("Couldn't find mlir-tblgen!")
     }

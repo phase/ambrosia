@@ -25,4 +25,5 @@ add_executable(ambrosia
         cxx/include/bridge.h
         cxx/bridge.cpp
         target/cxxbridge/rust/cxx.h
-        cxx/include/dialect.h)
+        cxx/include/dialect.h
+        cxx/dialect.cpp)

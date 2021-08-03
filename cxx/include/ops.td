@@ -7,6 +7,7 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 // our dialect
 def Ambrosia_Dialect : Dialect {
   let name = "ambrosia";
+  let summary = "Minimal example of Rust + MLIR";
   let cppNamespace = "::ambrosia::mlir";
 }
 
