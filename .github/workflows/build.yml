@@ -6,17 +6,12 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     # llvm 12 requires glibc 2.33
-    container: ubuntu:impish
+    container: clangbuiltlinux/ubuntu:llvm12-latest
     steps:
       - name: Install dependencies
         run: apt-get update && apt-get install -y xz-utils libc6-dev curl build-essential
 
       - uses: actions/checkout@v2
-
-      - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
-        with:
-          version: "12.0.1"
 
       - name: Install Rust Toolchain
         uses: actions-rs/toolchain@v1

@@ -1,7 +1,6 @@
 mod bridge;
 
 use color_eyre::Report;
-use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 fn main() -> Result<(), Report> {
